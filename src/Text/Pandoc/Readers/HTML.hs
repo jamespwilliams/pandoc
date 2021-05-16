@@ -570,18 +570,15 @@ pCodeBlock = try $ do
   return $ B.codeBlockWith attr result
   where
     pCodeBlockAttrs :: PandocMonad m => TagParser m Attr
-    pCodeBlockAttrs = (try preCodeAttrs) <|> (try preAttrs)
-      where
-        preCodeAttrs :: PandocMonad m => TagParser m Attr
-        preCodeAttrs = do
-          TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
-          TagOpen _ codeAttr <- pSatisfy (matchTagOpen "code" [])
-          return $ toAttr attr'
-
-        preAttrs :: PandocMonad m => TagParser m Attr
-        preAttrs = do
-          TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
-          return $ toAttr attr'
+    pCodeBlockAttrs = do
+      TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
+      codeAttr' <- (do
+          TagOpen _ c <- try $ pSatisfy (matchTagOpen "code" [])
+          return c
+        ) <|> (return [])
+      let (preID, preClasses, preKVs) = toAttr attr'
+      let (_, codeClassses, _)        = toAttr codeAttr'
+      return $ (preID, preClasses ++ codeClassses, preKVs ++ codeKVs)
 
 tagToText :: Tag Text -> Text
 tagToText (TagText s)      = s
