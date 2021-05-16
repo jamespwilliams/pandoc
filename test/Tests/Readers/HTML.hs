@@ -108,6 +108,21 @@ tests = [ testGroup "base tag"
             "<header id=\"title\">Title</header>" =?>
             divWith ("title", mempty, mempty) (plain "Title")
           ]
+        , testGroup "pre"
+          [ test htmlNativeDivs "pre block" $
+            "<pre id=\"xyz\" class=\"haskell\">f x y</pre>" =?>
+            codeBlockWith ("xyz", ["haskell"], []) "f x y"
+          ]
+        , testGroup "pre"
+          [ test htmlNativeDivs "code block classes within pre block are picked up" $
+            "<pre id=\"xyz\" class=\"abc\"><code class=\"haskell\">f x y</code></pre>" =?>
+            codeBlockWith ("xyz", ["abc", "haskell"], []) "f x y"
+          ]
+        , testGroup "pre"
+          [ test htmlNativeDivs "code block classes have language- prefixes removed" $
+            "<pre id=\"xyz\" class=\"abc\"><code class=\"language-haskell\">f x y</code></pre>" =?>
+            codeBlockWith ("xyz", ["abc", "haskell"], []) "f x y"
+          ]
         , askOption $ \(QuickCheckTests numtests) ->
             testProperty "Round trip" $
               withMaxSuccess (if QuickCheckTests numtests == defaultValue
