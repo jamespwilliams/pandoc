@@ -577,8 +577,12 @@ pCodeBlock = try $ do
           return c
         ) <|> (return [])
       let (preID, preClasses, preKVs) = toAttr attr'
-      let (_, codeClassses, _)        = toAttr codeAttr'
-      return $ (preID, preClasses ++ codeClassses, preKVs ++ codeKVs)
+      let (_, codeClasses, _)         = toAttr codeAttr'
+      let classes                     = cleanClasses (preClasses ++ codeClasses)
+      return $ (preID, classes, preKVs)
+
+    cleanClasses :: [Text] -> [Text]
+    cleanClasses cs = map (\c -> fromMaybe c $ T.stripPrefix "language-" c) $ cs
 
 tagToText :: Tag Text -> Text
 tagToText (TagText s)      = s
