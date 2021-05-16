@@ -555,12 +555,8 @@ pFigure = try $ do
        _ -> mzero
 
 pCodeBlock :: PandocMonad m => TagParser m Blocks
-pCodeBlock = (try pCodeBlockNested) <|> (try pOnlyCodeBlock)
-
-pOnlyCodeBlock :: PandocMonad m => TagParser m Blocks
-pOnlyCodeBlock = try $ do
-  TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
-  let attr = toAttr attr'
+pCodeBlock = try $ do
+  attr <- pCodeBlockAttrs
   contents <- manyTill pAny (pCloses "pre" <|> eof)
   let rawText = T.concat $ map tagToText contents
   -- drop leading newline if any
@@ -572,23 +568,20 @@ pOnlyCodeBlock = try $ do
                     Just (result'', '\n') -> result''
                     _                     -> result'
   return $ B.codeBlockWith attr result
+  where
+    pCodeBlockAttrs :: PandocMonad m => TagParser m Attr
+    pCodeBlockAttrs = (try preCodeAttrs) <|> (try preAttrs)
+      where
+        preCodeAttrs :: PandocMonad m => TagParser m Attr
+        preCodeAttrs = do
+          TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
+          TagOpen _ codeAttr <- pSatisfy (matchTagOpen "code" [])
+          return $ toAttr attr'
 
-pCodeBlockNested :: PandocMonad m => TagParser m Blocks
-pCodeBlockNested = try $ do
-  TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
-  TagOpen _ codeAttr' <- pSatisfy (matchTagOpen "code" [])
-  let attr = toAttr attr'
-  contents <- manyTill pAny (pCloses "pre" <|> eof)
-  let rawText = T.concat $ map tagToText contents
-  -- drop leading newline if any
-  let result' = case T.uncons rawText of
-                     Just ('\n', xs) -> xs
-                     _               -> rawText
-  -- drop trailing newline if any
-  let result = case T.unsnoc result' of
-                    Just (result'', '\n') -> result''
-                    _                     -> result'
-  return $ B.codeBlockWith attr result
+        preAttrs :: PandocMonad m => TagParser m Attr
+        preAttrs = do
+          TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
+          return $ toAttr attr'
 
 tagToText :: Tag Text -> Text
 tagToText (TagText s)      = s
