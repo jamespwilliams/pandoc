@@ -555,8 +555,28 @@ pFigure = try $ do
        _ -> mzero
 
 pCodeBlock :: PandocMonad m => TagParser m Blocks
-pCodeBlock = try $ do
+pCodeBlock = (try pCodeBlockNested) <|> (try pOnlyCodeBlock)
+
+pOnlyCodeBlock :: PandocMonad m => TagParser m Blocks
+pOnlyCodeBlock = try $ do
   TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
+  let attr = toAttr attr'
+  contents <- manyTill pAny (pCloses "pre" <|> eof)
+  let rawText = T.concat $ map tagToText contents
+  -- drop leading newline if any
+  let result' = case T.uncons rawText of
+                     Just ('\n', xs) -> xs
+                     _               -> rawText
+  -- drop trailing newline if any
+  let result = case T.unsnoc result' of
+                    Just (result'', '\n') -> result''
+                    _                     -> result'
+  return $ B.codeBlockWith attr result
+
+pCodeBlockNested :: PandocMonad m => TagParser m Blocks
+pCodeBlockNested = try $ do
+  TagOpen _ attr' <- pSatisfy (matchTagOpen "pre" [])
+  TagOpen _ codeAttr' <- pSatisfy (matchTagOpen "code" [])
   let attr = toAttr attr'
   contents <- manyTill pAny (pCloses "pre" <|> eof)
   let rawText = T.concat $ map tagToText contents
